@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CaCiCu-Chat</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <script>
+        window.API_CONFIG = {
+            BASE_URL: '',
+            WS_URL: '',
+            API_VERSION: 'v1',
+            ENV: 'production'
+        };
+    </script>
+</head>
+<body>
+<div class="app-container" id="app">
+    <div class="header">
+        <div class="header-title">CaCiCu-Chat</div>
+        <div class="header-actions">
+            <i class="fas fa-bell" style="position:relative;" title="Notifikasi">
+                <span class="notification-badge" id="notifBadge">3</span>
+            </i>
+            <i class="fas fa-ellipsis-v" onclick="app.openMenu()" title="Menu"></i>
+        </div>
+    </div>
+    <div class="tab-nav">
+        <div class="tab-item active" data-tab="personal" onclick="app.switchTab('personal')">
+            <i class="fas fa-user"></i><span>Personal</span>
+        </div>
+        <div class="tab-item" data-tab="group" onclick="app.switchTab('group')">
+            <i class="fas fa-users"></i><span>Ruang Bebas</span>
+        </div>
+        <div class="tab-item" data-tab="project" onclick="app.switchTab('project')">
+            <i class="fas fa-calendar-alt"></i><span>Project</span>
+        </div>
+    </div>
+    <div class="content-area" id="contentArea">
+        <div class="tab-content active" id="tab-personal">
+            <div class="chat-list" id="personalChatList"></div>
+        </div>
+        <div class="tab-content" id="tab-group">
+            <div class="chat-room" id="groupChatRoom"></div>
+        </div>
+        <div class="tab-content" id="tab-project">
+            <div class="info-banner">
+                <i class="fas fa-info-circle"></i>
+                <div><b>Halaman khusus project kerja.</b> Jika ingin membuat jadwal atau catatan di luar konteks project, silakan gunakan <b style="color: var(--primary);">Ruang Bebas</b>.</div>
+            </div>
+            <div class="project-subtabs">
+                <div class="project-subtab active" data-subtab="jadwal" onclick="app.switchProjectSubtab('jadwal')">
+                    <i class="fas fa-calendar-alt"></i>Jadwal
+                </div>
+                <div class="project-subtab" data-subtab="catatan" onclick="app.switchProjectSubtab('catatan')">
+                    <i class="fas fa-sticky-note"></i>Catatan
+                </div>
+            </div>
+            <div class="project-subcontent active" id="project-jadwal">
+                <div class="filter-bar">
+                    <div class="quick-actions" id="scheduleFilters">
+                        <div class="quick-chip active" data-filter="today">Hari Ini</div>
+                        <div class="quick-chip" data-filter="week">Minggu Ini</div>
+                        <div class="quick-chip" data-filter="month">Bulan Ini</div>
+                        <div class="quick-chip" data-filter="all">Semua</div>
+                    </div>
+                    <button class="btn-add" onclick="app.showToast('Integrasi: POST /api/v1/schedules')" title="Tambah Jadwal">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+                <div class="schedule-list" id="scheduleList"></div>
+            </div>
+            <div class="project-subcontent" id="project-catatan">
+                <div style="display:flex;justify-content:flex-end;padding:6px 0 8px;">
+                    <button class="btn-add-note" onclick="app.showToast('Integrasi: POST /api/v1/notes')">
+                        <i class="fas fa-plus"></i> Catatan Baru
+                    </button>
+                </div>
+                <div class="notes-list" id="notesList"></div>
+            </div>
+        </div>
+    </div>
+    <button class="fab" id="fabBtn" onclick="app.openContactModal()">
+        <i class="fas fa-user-plus"></i>
+    </button>
+    <div class="scroll-indicator" id="scrollTop" onclick="app.scrollToTop()">
+        <i class="fas fa-chevron-up"></i>
+    </div>
+</div>
+
+<div class="modal-overlay" id="menuModal" onclick="app.closeMenu(event)">
+    <div class="modal-menu">
+        <div class="modal-menu-item" onclick="app.openFullscreenModal('gallery')">
+            <i class="fas fa-images"></i>
+            <div><span>Galeri Foto</span><div class="menu-desc">Lihat semua foto yang dibagikan</div></div>
+        </div>
+        <div class="modal-menu-item" onclick="app.openFullscreenModal('settings')">
+            <i class="fas fa-cog"></i>
+            <div><span>Pengaturan Akun</span><div class="menu-desc">Kelola profil dan preferensi</div></div>
+        </div>
+        <div class="modal-menu-item" onclick="app.openFullscreenModal('info')">
+            <i class="fas fa-info-circle"></i>
+            <div><span>Info Aplikasi</span><div class="menu-desc">Tentang CaCiCu-Chat</div></div>
+        </div>
+    </div>
+</div>
+
+<div class="fullscreen-modal" id="modal-gallery">
+    <div class="fullscreen-modal-header">
+        <button class="back-btn" onclick="app.closeFullscreenModal('gallery')"><i class="fas fa-arrow-left"></i></button>
+        <h2>Galeri Foto</h2>
+    </div>
+    <div class="fullscreen-modal-body">
+        <div class="gallery-grid" id="galleryGrid"></div>
+        <div class="empty-state" id="galleryEmpty"><p>Galeri foto akan menampilkan semua media yang dibagikan dalam chat</p></div>
+    </div>
+</div>
+
+<div class="fullscreen-modal" id="modal-settings">
+    <div class="fullscreen-modal-header">
+        <button class="back-btn" onclick="app.closeFullscreenModal('settings')"><i class="fas fa-arrow-left"></i></button>
+        <h2>Pengaturan Akun</h2>
+    </div>
+    <div class="fullscreen-modal-body">
+        <div class="profile-header">
+            <div class="avatar" style="width:64px;height:64px;margin:0 auto 10px;border-radius:50%;">
+                <img src="https://i.pravatar.cc/150?img=33" alt="Profile" id="profileAvatar" style="border-radius:50%;">
+            </div>
+            <div class="profile-name" id="profileName">Anda</div>
+            <div class="profile-email" id="profileEmail">anda@cicicu-chat.com</div>
+        </div>
+        <div class="settings-section">
+            <div class="settings-section-title">Akun</div>
+            <div class="settings-item" onclick="app.showToast('Integrasi: GET /api/v1/profile')">
+                <i class="fas fa-user"></i>
+                <div class="settings-item-content"><div class="settings-item-title">Profil Saya</div><div class="settings-item-desc">Ubah foto, nama, dan bio</div></div>
+                <i class="fas fa-chevron-right settings-item-arrow"></i>
+            </div>
+            <div class="settings-item" onclick="app.showToast('Integrasi: GET /api/v1/security')">
+                <i class="fas fa-shield-alt"></i>
+                <div class="settings-item-content"><div class="settings-item-title">Privasi & Keamanan</div><div class="settings-item-desc">Atur privasi dan keamanan akun</div></div>
+                <i class="fas fa-chevron-right settings-item-arrow"></i>
+            </div>
+            <div class="settings-item">
+                <i class="fas fa-bell"></i>
+                <div class="settings-item-content"><div class="settings-item-title">Notifikasi</div><div class="settings-item-desc">Atur preferensi notifikasi</div></div>
+                <div class="toggle-switch active" onclick="this.classList.toggle('active')"></div>
+            </div>
+        </div>
+        <div class="settings-section">
+            <div class="settings-section-title">Tampilan</div>
+            <div class="settings-item">
+                <i class="fas fa-moon"></i>
+                <div class="settings-item-content"><div class="settings-item-title">Mode Gelap</div><div class="settings-item-desc">Gunakan tema gelap</div></div>
+                <div class="toggle-switch active" onclick="this.classList.toggle('active')"></div>
+            </div>
+            <div class="settings-item" onclick="app.showToast('Integrasi: PATCH /api/v1/preferences')">
+                <i class="fas fa-font"></i>
+                <div class="settings-item-content"><div class="settings-item-title">Ukuran Font</div><div class="settings-item-desc">Sedang</div></div>
+                <i class="fas fa-chevron-right settings-item-arrow"></i>
+            </div>
+        </div>
+        <div class="settings-section">
+            <div class="settings-section-title">Lainnya</div>
+            <div class="settings-item" onclick="app.showToast('Integrasi: GET /api/v1/help')">
+                <i class="fas fa-question-circle"></i>
+                <div class="settings-item-content"><div class="settings-item-title">Bantuan & Dukungan</div><div class="settings-item-desc">FAQ dan pusat bantuan</div></div>
+                <i class="fas fa-chevron-right settings-item-arrow"></i>
+            </div>
+            <div class="settings-item" onclick="app.logout()">
+                <i class="fas fa-sign-out-alt" style="color:var(--danger);"></i>
+                <div class="settings-item-content"><div class="settings-item-title" style="color:var(--danger);">Keluar</div><div class="settings-item-desc">Logout dari akun</div></div>
+                <i class="fas fa-chevron-right settings-item-arrow" style="color:var(--danger);"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="fullscreen-modal" id="modal-info">
+    <div class="fullscreen-modal-header">
+        <button class="back-btn" onclick="app.closeFullscreenModal('info')"><i class="fas fa-arrow-left"></i></button>
+        <h2>Info Aplikasi</h2>
+    </div>
+    <div class="fullscreen-modal-body">
+        <div class="info-logo">
+            <div class="info-logo-icon"><i class="fas fa-comments"></i></div>
+            <h1>CaCiCu-Chat</h1>
+            <div class="info-version">Versi 1.0.0 (Beta)</div>
+        </div>
+        <div class="info-description">
+            <b>CaCiCu-Chat</b> dibangun di atas arsitektur <b>Zero-Knowledge</b> dengan enkripsi <b>AES-256-GCM end-to-end</b> pada setiap lapisan komunikasi. Setiap pesan, file, dan metadata dienkripsi secara lokal di perangkat pengirim sebelum meninggalkan perangkat, dan hanya dapat didekripsi oleh perangkat penerima yang terverifikasi.<br><br>
+            Sistem <b>OTP Akses Dinamis</b> memastikan setiap kontak baru harus diverifikasi melalui kode sekali pakai yang dihasilkan secara kriptografis, menghilangkan risiko impersonasi dan akses tidak sah. Tidak ada server pusat yang menyimpan kunci enkripsi, tidak ada backdoor, dan tidak ada pihak ketiga yang dapat mengakses percakapan Anda.<br><br>
+            Dengan <b>Forward Secrecy</b> aktif secara default, setiap sesi chat menghasilkan kunci unik yang terpisah. Jika satu kunci berhasil dikompromikan, seluruh riwayat percakapan tetap aman. Semua data lokal dihapus secara otomatis setelah periode tidak aktif yang dapat dikonfigurasi.<br><br>
+            <i>"Privasi bukan fitur tambahan. Privasi adalah fondasi."</i>
+        </div>
+        <div class="info-stats">
+            <div class="info-stat"><div class="info-stat-number">256-bit</div><div class="info-stat-label">Enkripsi AES-GCM</div></div>
+            <div class="info-stat"><div class="info-stat-number">Zero</div><div class="info-stat-label">Data Tersimpan di Server</div></div>
+            <div class="info-stat"><div class="info-stat-number">100%</div><div class="info-stat-label">Open Source</div></div>
+        </div>
+        <div class="settings-section">
+            <div class="settings-section-title">Arsitektur Keamanan</div>
+            <div class="settings-item">
+                <i class="fas fa-lock"></i>
+                <div class="settings-item-content"><div class="settings-item-title">Enkripsi End-to-End</div><div class="settings-item-desc">AES-256-GCM dengan kunci yang dihasilkan per sesi</div></div>
+            </div>
+            <div class="settings-item">
+                <i class="fas fa-key"></i>
+                <div class="settings-item-content"><div class="settings-item-title">Zero-Knowledge Proof</div><div class="settings-item-desc">Server tidak pernah menyimpan kunci dekripsi apa pun</div></div>
+            </div>
+            <div class="settings-item">
+                <i class="fas fa-shield-alt"></i>
+                <div class="settings-item-content"><div class="settings-item-title">Forward Secrecy</div><div class="settings-item-desc">Kunci baru untuk setiap sesi, kompromi masa lalu tetap aman</div></div>
+            </div>
+            <div class="settings-item">
+                <i class="fas fa-user-shield"></i>
+                <div class="settings-item-content"><div class="settings-item-title">OTP Akses Dinamis</div><div class="settings-item-desc">Verifikasi kriptografis untuk setiap kontak baru</div></div>
+            </div>
+        </div>
+        <div class="info-footer">
+            <i class="fas fa-mug-hot" style="color:var(--accent);"></i> Dibuat saat saldo untuk Depo udah habis, dan gak tau mo ngapain lagi......<br>
+            &copy; 2026 CaCiCu-Chat. Hak Cipta Dilindungi.
+        </div>
+    </div>
+</div>
+
+<div class="contact-modal-overlay" id="contactModal" onclick="app.closeContactModal(event)">
+    <div class="contact-modal">
+        <div class="contact-modal-header">
+            <h3><i class="fas fa-user-plus"></i> Tambah Kontak Baru</h3>
+            <button class="contact-modal-close" onclick="app.closeContactModalDirect()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="contact-modal-body">
+            <div class="form-group">
+                <label>Nama Kontak</label>
+                <input type="text" id="contactName" placeholder="Masukkan nama kontak...">
+            </div>
+            <div class="form-group">
+                <label>Kode OTP Akses</label>
+                <input type="text" id="contactOTP" placeholder="Masukkan kode OTP..." maxlength="6">
+                <div class="form-hint"><i class="fas fa-shield-alt"></i> Kode OTP digunakan untuk verifikasi dan mengamankan akses kontak baru.</div>
+            </div>
+            <button class="contact-submit-btn" onclick="app.submitContact()">
+                <i class="fas fa-plus"></i> Tambah Kontak
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="loading-overlay" id="loadingOverlay"><div class="spinner"></div></div>
+
+<script src="js/data.js"></script>
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

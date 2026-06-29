@@ -1,0 +1,2 @@
+# Cloudflare Pages redirects
+# /api/*  https://api.cicicu-chat.com/api/:splat  200
